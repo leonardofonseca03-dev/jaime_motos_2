@@ -1,21 +1,8 @@
-tasks.withType<com.android.build.gradle.internal.tasks.CheckAarMetadataTask> {
-    enabled = false
-}
-
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services") version "4.4.0" apply false
-}
-
-configurations.all {
-    resolutionStrategy.eachDependency {
-        if (requested.group.startsWith("com.google.firebase") || 
-            requested.group.startsWith("androidx")) {
-            useTargetCompatibility(JavaVersion.VERSION_17)
-        }
-    }
 }
 
 android {
