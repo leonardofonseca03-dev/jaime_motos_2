@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "794602933913",
+    "project_id": "saas-jaime-motos",
+    "storage_bucket": "saas-jaime-motos.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:794602933913:android:e456f0e5192e80f2563208",
+        "android_client_info": {
+          "package_name": "com.example.jaime_motos"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBSYCtAplOmUJVUbCvB_La1xuyWPaGUs-w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:794602933913:android:0156801da70ae93b563208",
+        "android_client_info": {
+          "package_name": "com.jaimemotos.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBSYCtAplOmUJVUbCvB_La1xuyWPaGUs-w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
