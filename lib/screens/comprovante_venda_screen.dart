@@ -9,10 +9,27 @@ import 'pdv_screen.dart';
 
 class ComprovanteVendaScreen extends StatefulWidget {
   final List<ItemCarrinho> itens;
-  final double total;
+  final double totalBruto;
+  final double desconto;
+  final double totalGeral;
+  final FormaPagamento formaPagamento;
+  final int parcelas;
+  final double valorRecebido;
+  final double troco;
   final DateTime data;
 
-  const ComprovanteVendaScreen({super.key, required this.itens, required this.total, required this.data});
+  const ComprovanteVendaScreen({
+    super.key,
+    required this.itens,
+    required this.totalBruto,
+    required this.desconto,
+    required this.totalGeral,
+    required this.formaPagamento,
+    required this.parcelas,
+    required this.valorRecebido,
+    required this.troco,
+    required this.data,
+  });
 
   @override
   State<ComprovanteVendaScreen> createState() => _ComprovanteVendaScreenState();
@@ -21,6 +38,15 @@ class ComprovanteVendaScreen extends StatefulWidget {
 class _ComprovanteVendaScreenState extends State<ComprovanteVendaScreen> {
   String _formatarMoeda(double valor) {
     return 'R\$ ${valor.toStringAsFixed(2).replaceAll('.', ',')}';
+  }
+
+  String _nomeFormaPagamento(FormaPagamento fp) {
+    return switch(fp) {
+      FormaPagamento.dinheiro => 'Dinheiro',
+      FormaPagamento.debito => 'Cartão de Débito',
+      FormaPagamento.credito => 'Cartão de Crédito',
+      FormaPagamento.pix => 'PIX',
+    };
   }
 
   Future<Uint8List> _gerarPdf() async {
@@ -48,9 +74,11 @@ class _ComprovanteVendaScreenState extends State<ComprovanteVendaScreen> {
                   ],
                 ),
               ),
+
               pw.Text('ITENS DA VENDA', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
               pw.Container(height: 1, color: PdfColors.grey300),
               pw.SizedBox(height: 8),
+
               pw.Table(
                 border: pw.TableBorder.all(color: PdfColors.grey300),
                 columnWidths: {
@@ -66,7 +94,7 @@ class _ComprovanteVendaScreenState extends State<ComprovanteVendaScreen> {
                       pw.Padding(padding: pw.EdgeInsets.all(6), child: pw.Text('Produto', style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
                       pw.Padding(padding: pw.EdgeInsets.all(6), child: pw.Text('Qtd', style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
                       pw.Padding(padding: pw.EdgeInsets.all(6), child: pw.Text('Unitário', style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
-                      pw.Padding(padding: pw.EdgeInsets.all(6), child: pw.Text('Total', style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
+                      pw.Padding(padding: pw.EdgeInsets.all(6), child: pw.Text('Subtotal', style: pw.TextStyle(fontWeight: pw.FontWeight.bold))),
                     ],
                   ),
                   ...widget.itens.map((item) => pw.TableRow(
@@ -79,18 +107,35 @@ class _ComprovanteVendaScreenState extends State<ComprovanteVendaScreen> {
                   )),
                 ],
               ),
+
               pw.SizedBox(height: 20),
+
               pw.Align(
                 alignment: pw.Alignment.centerRight,
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.end,
                   children: [
-                    pw.Container(width: 200, height: 2, color: PdfColors.black),
-                    pw.SizedBox(height: 8),
-                    pw.Text('VALOR TOTAL: ${_formatarMoeda(widget.total)}', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColor.fromHex('#F97316'))),
+                    pw.Text('Total Bruto: ............ ${_formatarMoeda(widget.totalBruto)}'),
+                    pw.Text('Desconto: ................. - ${_formatarMoeda(widget.desconto)}'),
+                    pw.Container(width: 200, height: 1, color: PdfColors.black, margin: pw.EdgeInsets.symmetric(vertical: 4)),
+                    pw.Text('TOTAL A PAGAR: ${_formatarMoeda(widget.totalGeral)}', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColor.fromHex('#F97316'))),
                   ],
                 ),
               ),
+
+              pw.SizedBox(height: 16),
+              pw.Container(width: double.infinity, height: 1, color: PdfColors.grey300),
+              pw.SizedBox(height: 12),
+
+              pw.Text('FORMA DE PAGAMENTO', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+              pw.Text(_nomeFormaPagamento(widget.formaPagamento)),
+              if (widget.formaPagamento == FormaPagamento.credito && widget.parcelas > 1)
+                pw.Text('${widget.parcelas} x de ${_formatarMoeda(widget.totalGeral / widget.parcelas)}'),
+              if (widget.formaPagamento == FormaPagamento.dinheiro) ...[
+                pw.Text('Valor Recebido: ${_formatarMoeda(widget.valorRecebido)}'),
+                pw.Text('Troco: ${_formatarMoeda(widget.troco)}'),
+              ],
+
               pw.Spacer(),
               pw.Center(
                 child: pw.Column(
@@ -118,7 +163,18 @@ class _ComprovanteVendaScreenState extends State<ComprovanteVendaScreen> {
     for (var item in widget.itens) {
       texto += '• ${item.produto.nome} (${item.quantidade}x) — ${_formatarMoeda(item.subtotal)}\n';
     }
-    texto += '\n*VALOR TOTAL: ${_formatarMoeda(widget.total)}*';
+    texto += '\n*RESUMO:*\n';
+    texto += 'Total Bruto: ${_formatarMoeda(widget.totalBruto)}\n';
+    texto += 'Desconto: - ${_formatarMoeda(widget.desconto)}\n';
+    texto += '*TOTAL: ${_formatarMoeda(widget.totalGeral)}*\n';
+    texto += 'Pagamento: ${_nomeFormaPagamento(widget.formaPagamento)}\n';
+    if (widget.formaPagamento == FormaPagamento.credito && widget.parcelas > 1) {
+      texto += '${widget.parcelas} x de ${_formatarMoeda(widget.totalGeral / widget.parcelas)}\n';
+    }
+    if (widget.formaPagamento == FormaPagamento.dinheiro) {
+      texto += 'Valor Recebido: ${_formatarMoeda(widget.valorRecebido)}\n';
+      texto += 'Troco: ${_formatarMoeda(widget.troco)}\n';
+    }
 
     final uri = Uri.parse('https://wa.me/?text=${Uri.encodeComponent(texto)}');
     if (await canLaunchUrl(uri)) {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'screens/clientes_screen.dart';
 import 'screens/produtos_screen.dart';
 import 'screens/ordens_servico_screen.dart';
@@ -270,8 +271,60 @@ class _LoginScreenState extends State<LoginScreen> {
 }
 
 // ==================== TELA PRINCIPAL (DASHBOARD) ====================
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late Future<Map<String, dynamic>> _resumoFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _resumoFuture = _carregarResumo();
+  }
+
+  Future<Map<String, dynamic>> _carregarResumo() async {
+    final firestore = FirebaseFirestore.instance;
+    final hoje = DateTime.now();
+    final inicioDoDia = DateTime(hoje.year, hoje.month, hoje.day);
+    final inicioDoDiaTimestamp = Timestamp.fromDate(inicioDoDia);
+
+    final resultados = await Future.wait([
+      firestore.collection('ordens_servico').get(),
+      firestore.collection('clientes').get(),
+      firestore.collection('produtos').get(),
+      firestore
+          .collection('vendas')
+          .where('data', isGreaterThanOrEqualTo: inicioDoDiaTimestamp)
+          .get(),
+    ]);
+
+    final ordens = resultados[0];
+    final vendas = resultados[3];
+    final vendasHoje = vendas.docs.fold<double>(
+      0,
+      (total, venda) => total + ((venda.data()['totalGeral'] ?? 0) as num).toDouble(),
+    );
+
+    return {
+      'osAbertas': ordens.docs.where((doc) => doc.data()['status'] != 'Concluída').length,
+      'vendasHoje': vendasHoje,
+      'clientes': resultados[1].size,
+      'produtos': resultados[2].size,
+    };
+  }
+
+  String _formatarMoeda(double valor) {
+    return 'R\$ ${valor.toStringAsFixed(2).replaceAll('.', ',')}';
+  }
+
+  Future<void> _recarregarResumo() async {
+    setState(() => _resumoFuture = _carregarResumo());
+  }
 
   Future<void> _logout(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
@@ -352,10 +405,13 @@ class HomeScreen extends StatelessWidget {
                     icon: Icons.description,
                     title: 'Nova OS',
                     color: const Color(0xFF0F172A),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => OrdensServicoScreen()),
-                    ),
+                    onTap: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => OrdensServicoScreen()),
+                      );
+                      if (mounted) await _recarregarResumo();
+                    },
                   ),
                   _buildQuickAction(
                     context,
@@ -382,32 +438,51 @@ class HomeScreen extends StatelessWidget {
                     icon: Icons.point_of_sale,
                     title: 'PDV',
                     color: const Color(0xFF8B5CF6),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const PdVScreen()),
-                    ),
+                    onTap: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const PdVScreen()),
+                      );
+                      if (mounted) await _recarregarResumo();
+                    },
                   ),
                 ],
               ),
               const SizedBox(height: 24),
-              // Cards de resumo
-              const Text(
-                'Resumo',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-              ),
-              const SizedBox(height: 16),
-              GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  _buildSummaryCard(title: 'OS Abertas', value: '0', icon: Icons.assignment, color: Color(0xFFF97316)),
-                  _buildSummaryCard(title: 'Vendas Hoje', value: 'R\$ 0,00', icon: Icons.attach_money, color: Color(0xFF10B981)),
-                  _buildSummaryCard(title: 'Clientes', value: '0', icon: Icons.people, color: Color(0xFF0F172A)),
-                  _buildSummaryCard(title: 'Produtos', value: '0', icon: Icons.inventory, color: Color(0xFF8B5CF6)),
-                ],
+              FutureBuilder<Map<String, dynamic>>(
+                future: _resumoFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Text('Erro ao carregar resumo: ${snapshot.error}');
+                  }
+                  final resumo = snapshot.data!;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        'Resumo',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                      ),
+                      const SizedBox(height: 16),
+                      GridView.count(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        children: [
+                          _buildSummaryCard(title: 'OS Abertas', value: '${resumo['osAbertas']}', icon: Icons.assignment, color: const Color(0xFFF97316)),
+                          _buildSummaryCard(title: 'Vendas Hoje', value: _formatarMoeda(resumo['vendasHoje'] as double), icon: Icons.attach_money, color: const Color(0xFF10B981)),
+                          _buildSummaryCard(title: 'Clientes', value: '${resumo['clientes']}', icon: Icons.people, color: const Color(0xFF0F172A)),
+                          _buildSummaryCard(title: 'Produtos', value: '${resumo['produtos']}', icon: Icons.inventory, color: const Color(0xFF8B5CF6)),
+                        ],
+                      ),
+                    ],
+                  );
+                },
               ),
             ],
           ),
