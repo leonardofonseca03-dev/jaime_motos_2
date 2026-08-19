@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'screens/clientes_screen.dart';
 
 void main() async {
   // Inicializa o Firebase antes de rodar o app
@@ -86,11 +87,12 @@ class _LoginScreenState extends State<LoginScreen> {
         String mensagem = 'Erro ao entrar!';
         if (e.code == 'user-not-found') mensagem = 'Usuário não encontrado!';
         if (e.code == 'wrong-password') mensagem = 'Senha incorreta!';
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(mensagem), backgroundColor: Colors.red),
         );
       } finally {
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
       }
     }
   }
@@ -212,12 +214,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         await FirebaseAuth.instance.sendPasswordResetEmail(
                           email: _emailController.text.trim(),
                         );
+                        if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('E-mail de recuperação enviado!'),
                           ),
                         );
                       } catch (e) {
+                        if (!context.mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('Erro ao enviar e-mail!'),
@@ -367,8 +371,11 @@ class HomeScreen extends StatelessWidget {
                     icon: Icons.person_add,
                     title: 'Novo Cliente',
                     color: const Color(0xFFF97316),
-                    onTap: () {},
+                    onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => ClientesScreen()),
                   ),
+                ),                  
                   _buildQuickAction(
                     context,
                     icon: Icons.inventory_2,
@@ -403,25 +410,25 @@ class HomeScreen extends StatelessWidget {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 children: const [
-                  _buildSummaryCard(
+                  _BuildSummaryCard(
                     title: 'OS Abertas',
                     value: '0',
                     icon: Icons.assignment,
                     color: Color(0xFFF97316),
                   ),
-                  _buildSummaryCard(
+                  _BuildSummaryCard(
                     title: 'Vendas Hoje',
                     value: 'R\$ 0,00',
                     icon: Icons.attach_money,
                     color: Color(0xFF10B981),
                   ),
-                  _buildSummaryCard(
+                  _BuildSummaryCard(
                     title: 'Clientes',
                     value: '0',
                     icon: Icons.people,
                     color: Color(0xFF0F172A),
                   ),
-                  _buildSummaryCard(
+                  _BuildSummaryCard(
                     title: 'Produtos',
                     value: '0',
                     icon: Icons.inventory,
@@ -490,13 +497,13 @@ class HomeScreen extends StatelessWidget {
 }
 
 // Widget para os cards de resumo
-class _buildSummaryCard extends StatelessWidget {
+class _BuildSummaryCard extends StatelessWidget {
   final String title;
   final String value;
   final IconData icon;
   final Color color;
 
-  const _buildSummaryCard({
+  const _BuildSummaryCard({
     required this.title,
     required this.value,
     required this.icon,

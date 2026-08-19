@@ -22,11 +22,3 @@ subprojects {
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
-
-subprojects {
-    tasks.whenTaskAdded {
-        if (name.contains("checkAarMetadata")) {
-            enabled = false
-        }
-    }
-}
