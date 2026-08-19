@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'screens/clientes_screen.dart';
+import 'screens/produtos_screen.dart';
+import 'screens/ordens_servico_screen.dart';
+import 'screens/pdv_screen.dart';
 
 void main() async {
   // Inicializa o Firebase antes de rodar o app
@@ -271,7 +273,7 @@ class _LoginScreenState extends State<LoginScreen> {
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
-  Future<void> _logout() async {
+  Future<void> _logout(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
   }
 
@@ -301,11 +303,7 @@ class HomeScreen extends StatelessWidget {
                         color: const Color(0xFFF97316),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(
-                        Icons.two_wheeler,
-                        color: Colors.white,
-                        size: 28,
-                      ),
+                      child: const Icon(Icons.two_wheeler, color: Colors.white, size: 28),
                     ),
                     const SizedBox(width: 12),
                     const Expanded(
@@ -328,7 +326,7 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                     IconButton(
-                      onPressed: _logout,
+                      onPressed: () => _logout(context),
                       icon: const Icon(Icons.logout, color: Colors.white),
                       tooltip: 'Sair',
                     ),
@@ -339,11 +337,7 @@ class HomeScreen extends StatelessWidget {
               // Atalhos rápidos
               const Text(
                 'Acesso Rápido',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0F172A),
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
               ),
               const SizedBox(height: 16),
               GridView.count(
@@ -358,13 +352,10 @@ class HomeScreen extends StatelessWidget {
                     icon: Icons.description,
                     title: 'Nova OS',
                     color: const Color(0xFF0F172A),
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Funcionalidade em desenvolvimento!'),
-                        ),
-                      );
-                    },
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => OrdensServicoScreen()),
+                    ),
                   ),
                   _buildQuickAction(
                     context,
@@ -372,23 +363,29 @@ class HomeScreen extends StatelessWidget {
                     title: 'Novo Cliente',
                     color: const Color(0xFFF97316),
                     onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => ClientesScreen()),
+                      context,
+                      MaterialPageRoute(builder: (_) => ClientesScreen()),
+                    ),
                   ),
-                ),                  
                   _buildQuickAction(
                     context,
                     icon: Icons.inventory_2,
                     title: 'Novo Produto',
                     color: const Color(0xFF10B981),
-                    onTap: () {},
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => ProdutosScreen()),
+                    ),
                   ),
                   _buildQuickAction(
                     context,
                     icon: Icons.point_of_sale,
                     title: 'PDV',
                     color: const Color(0xFF8B5CF6),
-                    onTap: () {},
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const PdVScreen()),
+                    ),
                   ),
                 ],
               ),
@@ -396,11 +393,7 @@ class HomeScreen extends StatelessWidget {
               // Cards de resumo
               const Text(
                 'Resumo',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF0F172A),
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
               ),
               const SizedBox(height: 16),
               GridView.count(
@@ -409,31 +402,11 @@ class HomeScreen extends StatelessWidget {
                 mainAxisSpacing: 12,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                children: const [
-                  _BuildSummaryCard(
-                    title: 'OS Abertas',
-                    value: '0',
-                    icon: Icons.assignment,
-                    color: Color(0xFFF97316),
-                  ),
-                  _BuildSummaryCard(
-                    title: 'Vendas Hoje',
-                    value: 'R\$ 0,00',
-                    icon: Icons.attach_money,
-                    color: Color(0xFF10B981),
-                  ),
-                  _BuildSummaryCard(
-                    title: 'Clientes',
-                    value: '0',
-                    icon: Icons.people,
-                    color: Color(0xFF0F172A),
-                  ),
-                  _BuildSummaryCard(
-                    title: 'Produtos',
-                    value: '0',
-                    icon: Icons.inventory,
-                    color: Color(0xFF8B5CF6),
-                  ),
+                children: [
+                  _buildSummaryCard(title: 'OS Abertas', value: '0', icon: Icons.assignment, color: Color(0xFFF97316)),
+                  _buildSummaryCard(title: 'Vendas Hoje', value: 'R\$ 0,00', icon: Icons.attach_money, color: Color(0xFF10B981)),
+                  _buildSummaryCard(title: 'Clientes', value: '0', icon: Icons.people, color: Color(0xFF0F172A)),
+                  _buildSummaryCard(title: 'Produtos', value: '0', icon: Icons.inventory, color: Color(0xFF8B5CF6)),
                 ],
               ),
             ],
@@ -442,10 +415,54 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
-
+  // Widget para os cards de resumo
+  Widget _buildSummaryCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 28),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
   // Widget para os botões de acesso rápido
-  Widget _buildQuickAction(
-    BuildContext context, {
+  Widget _buildQuickAction(BuildContext context, {
     required IconData icon,
     required String title,
     required Color color,
@@ -491,65 +508,6 @@ class HomeScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// Widget para os cards de resumo
-class _BuildSummaryCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _BuildSummaryCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: color, size: 22),
-          ),
-          const SizedBox(height: 12),
-          Text(title, style: const TextStyle(color: Colors.grey, fontSize: 13)),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-        ],
       ),
     );
   }
